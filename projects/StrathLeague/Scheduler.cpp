@@ -1,3 +1,6 @@
+
+#include <algorithm>
+#include <random>
 #include "Scheduler.h"
 #include <iostream>
 #include <unordered_set>
@@ -7,45 +10,63 @@ Scheduler::Scheduler(std::vector<Team> teams)
     : teams(teams) {}
 
 void Scheduler::createFixtures() {
-    int n = teams.size();
-    int rounds = n - 1;  // Number of rounds needed (each team plays others once)
+    std::vector<std::pair<Team, Team>> homeAndAwayFixtures;
 
-    // Vector to store all teams, use modulo operation for round-robin logic
-    std::vector<Team> tempTeams = teams;
-
-    // To store the fixtures
-    std::vector<std::pair<Team, Team>> allFixtures;
-
-    // Round-robin schedule for n teams over n-1 rounds
-    for (int round = 0; round < rounds; ++round) {
-        for (int i = 0; i < n / 2; ++i) {
-            Team homeTeam = tempTeams[i];
-            Team awayTeam = tempTeams[n - 1 - i];
-
-            // Create fixtures for this round
-            allFixtures.emplace_back(homeTeam, awayTeam);
+    // Generate home and away matches for all teams
+    for (size_t i = 0; i < teams.size(); ++i) {
+        for (size_t j = i + 1; j < teams.size(); ++j) {
+            // Home and away for each pair of teams
+            homeAndAwayFixtures.emplace_back(teams[i], teams[j]);  // Team i home, Team j away
+            homeAndAwayFixtures.emplace_back(teams[j], teams[i]);  // Team j home, Team i away
         }
-
-        // Rotate the array of teams, leaving the first one fixed
-        Team lastTeam = tempTeams[n - 1];
-        for (int i = n - 1; i > 1; --i) {
-            tempTeams[i] = tempTeams[i - 1];
-        }
-        tempTeams[1] = lastTeam;
     }
 
-    // Assign matches to weekends
-    int weekend = 1;
-    for (size_t i = 0; i < allFixtures.size(); ++i) {
-        const std::pair<Team, Team>& fixture = allFixtures[i];
-        fixtures.emplace_back(fixture.first, fixture.second, weekend);
+    // Shuffle the fixtures to ensure variety
+    std::random_shuffle(homeAndAwayFixtures.begin(), homeAndAwayFixtures.end());
 
-        // After every two matches (one weekend), increment the weekend count
-        if ((i + 1) % 2 == 0) {
-            weekend += 1;
+    int weekend = 1;
+    std::vector<std::pair<Team, Team>> weekendFixtures;
+
+    while (!homeAndAwayFixtures.empty()) {
+        std::unordered_set<std::string> teamsPlayingThisWeekend;
+
+        // Schedule two matches per weekend
+        for (auto it = homeAndAwayFixtures.begin(); it != homeAndAwayFixtures.end(); ) {
+            const Team& homeTeam = it->first;
+            const Team& awayTeam = it->second;
+
+            // Ensure the same team doesn't play twice in a weekend
+            if (teamsPlayingThisWeekend.find(homeTeam.getName()) == teamsPlayingThisWeekend.end() &&
+                teamsPlayingThisWeekend.find(awayTeam.getName()) == teamsPlayingThisWeekend.end()) {
+
+                weekendFixtures.push_back(*it);
+                teamsPlayingThisWeekend.insert(homeTeam.getName());
+                teamsPlayingThisWeekend.insert(awayTeam.getName());
+
+                // Erase the scheduled match from the list
+                it = homeAndAwayFixtures.erase(it);
+
+                // Stop if we have 2 matches for this weekend
+                if (weekendFixtures.size() == 2) break;
+            } else {
+                ++it;
+            }
         }
+
+        // Print out fixtures for the weekend
+        std::cout << "Weekend " << weekend << " Fixtures:\n";
+        for (const auto& fixture : weekendFixtures) {
+            std::cout << fixture.first.getName() << " vs " << fixture.second.getName()
+                      << " at " << fixture.first.getStadium() << "\n";
+        }
+
+        weekendFixtures.clear();  // Reset for the next weekend
+        weekend++;  // Move to the next weekend
     }
 }
+
+
+
 
 void Scheduler::displaySchedule() const {
     for (const auto& fixture : fixtures) {
