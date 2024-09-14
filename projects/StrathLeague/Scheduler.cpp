@@ -1,11 +1,34 @@
-
 #include <algorithm>
 #include <random>
 #include "Scheduler.h"
 #include <iostream>
 #include <unordered_set>
 #include <vector>
+#include <iomanip>   // For time formatting
+#include <sstream>   // For std::stringstream
 
+// Utility function to generate random match times
+std::string generateMatchTime() {
+    // Random number generator setup
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    // Define time ranges: 14:00-18:00 for afternoon, 19:00-22:00 for evening
+    std::uniform_int_distribution<> afternoonOrEvening(0, 1); // 0 for afternoon, 1 for evening
+    std::uniform_int_distribution<> hourAfternoon(14, 18);    // Hours between 14:00 and 18:00
+    std::uniform_int_distribution<> hourEvening(19, 22);      // Hours between 19:00 and 22:00
+    std::uniform_int_distribution<> minuteDist(0, 59);        // Minutes for any hour
+
+    // Select either afternoon or evening
+    int hour = (afternoonOrEvening(gen) == 0) ? hourAfternoon(gen) : hourEvening(gen);
+    int minute = minuteDist(gen);
+
+    // Format time in HH:MM format
+    std::stringstream ss;  // Include <sstream> for this
+    ss << std::setfill('0') << std::setw(2) << hour << ":"
+       << std::setfill('0') << std::setw(2) << minute;
+    return ss.str();
+}
 Scheduler::Scheduler(std::vector<Team> teams)
     : teams(teams) {}
 
@@ -53,20 +76,19 @@ void Scheduler::createFixtures() {
             }
         }
 
-        // Print out fixtures for the weekend
+        // Print out fixtures for the weekend with random times
         std::cout << "Weekend " << weekend << " Fixtures:\n";
         for (const auto& fixture : weekendFixtures) {
+            std::string matchTime = generateMatchTime();  // Generate match time
             std::cout << fixture.first.getName() << " vs " << fixture.second.getName()
-                      << " at " << fixture.first.getStadium() << "\n";
+                      << " at " << fixture.first.getStadium()
+                      << " - Time: " << matchTime << "\n";  // Include time in the output
         }
 
         weekendFixtures.clear();  // Reset for the next weekend
         weekend++;  // Move to the next weekend
     }
 }
-
-
-
 
 void Scheduler::displaySchedule() const {
     for (const auto& fixture : fixtures) {
